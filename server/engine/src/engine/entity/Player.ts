@@ -308,7 +308,10 @@ export default class Player extends PathingEntity {
         }
 
         sav.p4(Packet.getcrc(sav.data, 0, sav.pos));
-        const bytes = sav.data.subarray(0, sav.pos);
+        // Snapshots outlive this call (SQLite, worker messages, pending logouts).
+        // Give them owned bytes so the 30 KiB serialization packet can be reused.
+        const bytes = sav.data.slice(0, sav.pos);
+        sav.release();
         if (checkpoint && playerSaveStore()) World.checkpointPlayers(this, bytes);
         return bytes;
     }

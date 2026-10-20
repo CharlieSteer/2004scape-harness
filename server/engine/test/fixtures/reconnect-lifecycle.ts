@@ -2,6 +2,7 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import type ClientSocket from '../../src/server/ClientSocket.js';
+import Packet from '../../src/io/Packet.js';
 
 class TestWorker extends EventEmitter {
     messages: unknown[] = [];
@@ -37,6 +38,27 @@ function player(client: ClientSocket) {
     p.addSessionLog = (_type, message) => logs.push(message);
     return { p, logs };
 }
+
+test('saved snapshots own their bytes after serialization packet reuse', () => {
+    const { p } = player(new NullClientSocket());
+    p.x = 3200; p.z = 3201;
+    const first = p.save(false);
+    const expected = first.slice();
+    expect(first.buffer.byteLength).toBe(first.byteLength);
+    expect(PlayerLoading.verify(new Packet(first))).toBe(true);
+    // Reuse and overwrite the released serialization packet before reading the save.
+    const reused = Packet.alloc(2);
+    reused.data.fill(255);
+    reused.release();
+    p.x = 3300;
+    const second = p.save(false);
+    expect(first).toEqual(expected);
+    expect(first).not.toEqual(second);
+    expect(PlayerLoading.verify(new Packet(first))).toBe(true);
+    const restored = PlayerLoading.load(p.username, new Packet(first), null);
+    expect(restored.x).toBe(3200);
+    expect(restored.z).toBe(3201);
+});
 
 function queuedReconnects(count: number, onSave = () => {}) {
     const entries = [];
