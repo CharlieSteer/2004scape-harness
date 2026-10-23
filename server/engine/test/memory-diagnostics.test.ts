@@ -38,6 +38,8 @@ test('memory history is persisted and rotated without keeping the process alive'
         const value = JSON.parse(lines[0]);
         expect(value.process.role).toBe('test');
         expect(value.process.rss).toBeGreaterThan(0);
+        expect(value.native.current).toBeGreaterThan(0);
+        expect(value.context.network.bufferedBytes).toBe(0);
         expect(value.context.players).toBe(123);
         expect(readFileSync(join(directory, 'test.jsonl.1')).length).toBe(5 * 1024 * 1024);
     } finally { rmSync(directory, { recursive: true, force: true }); }

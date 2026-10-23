@@ -353,6 +353,10 @@ export async function startManagementWeb() {
             // rolling per-phase cycle timings over the last ~300 ticks
             '/tickstats': () => Response.json({ ...World.getTickStats(), web: getWebStats() }),
             '/memory': (req: Request) => Response.json(getMemoryDiagnostics(new URL(req.url).searchParams.has('history'))),
+            '/memory/heap': async () => {
+                const { heapStats } = await import('bun:jsc');
+                return Response.json({ ...getMemoryDiagnostics(), heap: heapStats() });
+            },
             // rs-sdk: the gateway asks whether a bot's recent login was refused for an old client
             // revision, so it can tell that bot's SDK scripts to update (management port only)
             '/outdated-client': (req: Request) => {

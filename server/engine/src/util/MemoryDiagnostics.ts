@@ -1,6 +1,8 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { isMainThread, parentPort, threadId, type Worker } from 'node:worker_threads';
+import { networkPressure } from './NetworkPressure.js';
+import { memoryUsage as nativeMemoryUsage } from 'bun:jsc';
 
 // JS heap statistics omit substantial native allocations (SQLite, sockets, workers).
 // Keep process RSS alongside each isolate's heap, and retain samples across OOM restarts.
@@ -30,7 +32,7 @@ function systemMemory(): Record<string, number> | null {
 }
 
 function snapshot() {
-    return { process: sample(), system: systemMemory(), workers: Object.fromEntries(workers), context: context() };
+    return { process: sample(), native: nativeMemoryUsage(), system: systemMemory(), workers: Object.fromEntries(workers), context: { ...context(), network: networkPressure.stats() } };
 }
 
 export function getMemoryDiagnostics(includeHistory = false) {
