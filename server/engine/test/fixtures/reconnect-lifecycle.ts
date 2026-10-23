@@ -21,7 +21,39 @@ const { websocketHandlers } = await import('../../src/web/websocket.js');
 const { PlayerLoading } = await import('../../src/engine/entity/PlayerLoading.js');
 const { default: ScriptProvider } = await import('../../src/engine/script/ScriptProvider.js');
 const { default: ScriptRunner } = await import('../../src/engine/script/ScriptRunner.js');
+const { default: VarPlayerType } = await import('../../src/cache/config/VarPlayerType.js');
 const world = World as any;
+
+test('single-pass varp serialization matches the existing save layout byte for byte', () => {
+    const get = spyOn(VarPlayerType, 'get').mockImplementation(id => ({
+        scope: id % 3 === 0 ? VarPlayerType.SCOPE_TEMP : VarPlayerType.SCOPE_PERM
+    }) as any);
+    try {
+        const { p } = player(new NullClientSocket());
+        for (const values of [[], [0, 0, 0], [123, 1, 127, 456, 128, 16384, 789, -1, 2147483647, 0, -2147483648]]) {
+            p.vars = new Int32Array(values);
+            const expected = new Packet(new Uint8Array(1024));
+            let count = 0;
+            for (let id = 0; id < values.length; id++) {
+                if (VarPlayerType.get(id).scope === VarPlayerType.SCOPE_PERM && values[id] !== 0) count++;
+            }
+            expected.p2(count);
+            for (let id = 0; id < values.length; id++) {
+                if (VarPlayerType.get(id).scope === VarPlayerType.SCOPE_PERM && values[id] !== 0) {
+                    expected.p2(id);
+                    expected.pVarInt(values[id]);
+                }
+            }
+            const save = p.save(false);
+            // Header, position, appearance, energy, playtime and 21 skill records.
+            const offset = 4 + 5 + 7 + 5 + 1 + 2 + 4 + 21 * 5;
+            expect(save.slice(offset, offset + expected.pos)).toEqual(expected.data.slice(0, expected.pos));
+            expect(PlayerLoading.verify(new Packet(save))).toBe(true);
+        }
+    } finally {
+        get.mockRestore();
+    }
+});
 
 afterEach(() => {
     for (const player of World.playerLoop.all()) player.unlink();

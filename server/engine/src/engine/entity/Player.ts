@@ -230,20 +230,19 @@ export default class Player extends PathingEntity {
         }
 
         let saved = 0;
+        const varpCountPos = sav.pos;
+        sav.p2(0); // backfill the count after writing the nonzero permanent vars
         for (let id = 0; id < this.vars.length; id++) {
-            const varp = VarPlayerType.get(id);
-            if (varp.scope === VarPlayerType.SCOPE_PERM && this.vars[id] !== 0) {
+            if (this.vars[id] !== 0 && VarPlayerType.get(id).scope === VarPlayerType.SCOPE_PERM) {
+                sav.p2(id);
+                sav.pVarInt(this.vars[id]);
                 saved++;
             }
         }
+        const varpEndPos = sav.pos;
+        sav.pos = varpCountPos;
         sav.p2(saved);
-        for (let id = 0; id < this.vars.length; id++) {
-            const varp = VarPlayerType.get(id);
-            if (varp.scope === VarPlayerType.SCOPE_PERM && this.vars[id] !== 0) {
-                sav.p2(id);
-                sav.pVarInt(this.vars[id]);
-            }
-        }
+        sav.pos = varpEndPos;
 
         let invCount = 0;
         const invStartPos = sav.pos;
