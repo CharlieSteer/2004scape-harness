@@ -46,7 +46,9 @@ test('cached ranks remain correct across profiles, exclusions and cache refresh'
 test('ranking requests wait for a worker with delayed startup to install its handler', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ranked-startup-'));
     try {
-        writeFileSync(join(dir, 'RankedHiscores.ts'), readFileSync(join(import.meta.dir, '../src/web/pages/RankedHiscores.ts')));
+        writeFileSync(join(dir, 'RankedHiscores.ts'), readFileSync(join(import.meta.dir, '../src/web/pages/RankedHiscores.ts'), 'utf8')
+            .replace('#/util/MemoryDiagnostics.js', './MemoryDiagnostics.ts'));
+        writeFileSync(join(dir, 'MemoryDiagnostics.ts'), readFileSync(join(import.meta.dir, '../src/util/MemoryDiagnostics.ts')));
         writeFileSync(join(dir, 'RankedHiscoresWorker.ts'), `
             import { parentPort } from 'node:worker_threads';
             let listening = false;

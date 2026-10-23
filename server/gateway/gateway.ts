@@ -16,6 +16,7 @@ import { chunkMessage } from '../../sdk/chunking';
 import { repeatsLastFanout } from './state-fanout';
 import { StateFieldSampler, TrafficMeter, formatFieldReport, formatTrafficReport, type ConnectionLabel } from './traffic';
 import { isIP } from 'node:net';
+import { startMemoryDiagnostics } from '../engine/src/util/MemoryDiagnostics';
 
 const GATEWAY_PORT = parseInt(process.env.AGENT_PORT || '7780');
 // Bind address. Fleet hosts running a private gateway set 127.0.0.1 so only
@@ -279,6 +280,9 @@ const pendingTakeovers = new Map<string, PendingTakeover>();  // username -> pen
 // SDK sockets with an sdk_connect in flight (awaiting auth), so a second
 // concurrent connect on the same socket can't slip through registration.
 const sdkConnecting = new Set<any>();
+
+startMemoryDiagnostics('gateway', () => ({ bots: botSessions.size, connectedBots: [...botSessions.values()].filter(s => s.ws !== null).length,
+    sdks: sdkSessions.size, pendingAuth: pendingAuthRequests.size, pendingTakeovers: pendingTakeovers.size, chatHistories: chatHistories.size }));
 
 // ============ Sync Module ============
 

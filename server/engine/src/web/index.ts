@@ -14,6 +14,7 @@ import { handleDisclaimerPage, handleMapviewPage, handlePublicFiles } from './pa
 import { WebSocketData, handleWebSocketUpgrade, handleGatewayEndpointGet, websocketHandlers } from './websocket.js';
 import { getIp } from './utils.js';
 import { getPlayerPositionsJson } from './worldfeed.js';
+import { getMemoryDiagnostics } from '#/util/MemoryDiagnostics.js';
 
 export type { WebSocketData };
 
@@ -69,6 +70,7 @@ export function getWebStats() {
 export async function startWeb() {
     Bun.serve<WebSocketData, WebSocketRoutes>({
         port: Environment.WEB_PORT,
+        hostname: '0.0.0.0',
         async fetch(req, server) {
             const url = new URL(req.url ?? '', `http://${req.headers.get('host')}`);
             const start = Date.now();
@@ -350,6 +352,7 @@ export async function startManagementWeb() {
             }),
             // rolling per-phase cycle timings over the last ~300 ticks
             '/tickstats': () => Response.json({ ...World.getTickStats(), web: getWebStats() }),
+            '/memory': (req: Request) => Response.json(getMemoryDiagnostics(new URL(req.url).searchParams.has('history'))),
             // rs-sdk: the gateway asks whether a bot's recent login was refused for an old client
             // revision, so it can tell that bot's SDK scripts to update (management port only)
             '/outdated-client': (req: Request) => {

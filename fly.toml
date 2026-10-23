@@ -7,6 +7,7 @@ dockerfile = "server/Dockerfile"
 ignorefile = "server/.dockerignore"
 
 [env]
+MEMORY_DIAGNOSTICS_DIR = "/opt/server/data/memory"
 # SDK bug reports land on the mounted volume so they survive deploys/restarts.
 BUG_REPORTS_FILE = "/opt/server/data/bug-reports.jsonl"
 # Grand Exchange escrow and authoritative player checkpoints survive redeploys.
