@@ -15,6 +15,8 @@ import { WebSocketData, handleWebSocketUpgrade, handleGatewayEndpointGet, websoc
 import { getIp } from './utils.js';
 import { getPlayerPositionsJson } from './worldfeed.js';
 import { getMemoryDiagnostics } from '#/util/MemoryDiagnostics.js';
+import { startWebTransport } from './WebTransport.js';
+import { isTransportRequest, setTransportSecret } from './transportAuth.js';
 
 export type { WebSocketData };
 
@@ -68,10 +70,14 @@ export function getWebStats() {
 }
 
 export async function startWeb() {
-    Bun.serve<WebSocketData, WebSocketRoutes>({
-        port: Environment.WEB_PORT,
-        hostname: '0.0.0.0',
+    const offThread = process.env.WEB_TRANSPORT_WORKER !== 'false';
+    const secret = offThread ? crypto.randomUUID() : '';
+    setTransportSecret(secret);
+    const engine = Bun.serve<WebSocketData, WebSocketRoutes>({
+        port: offThread ? 0 : Environment.WEB_PORT,
+        hostname: offThread ? '127.0.0.1' : '0.0.0.0',
         async fetch(req, server) {
+            if (offThread && !isTransportRequest(req)) return new Response('Forbidden', { status: 403 });
             const url = new URL(req.url ?? '', `http://${req.headers.get('host')}`);
             const start = Date.now();
             try {
@@ -80,7 +86,17 @@ export async function startWeb() {
                 recordRequest(url, req, Date.now() - start);
             }
         },
-        websocket: websocketHandlers
+        // Loopback never compresses. The public worker owns compression and socket
+        // I/O; spectator extraction remains on the tick thread before mask cleanup.
+        websocket: { ...websocketHandlers, perMessageDeflate: offThread ? false : true }
+    });
+    if (offThread) await startWebTransport({
+        port: Environment.WEB_PORT,
+        engineOrigin: `http://127.0.0.1:${engine.port}`,
+        gatewayOrigin: `ws://127.0.0.1:${process.env.AGENT_PORT || '7780'}`,
+        secret,
+        behindFly: Boolean(process.env.FLY_APP_NAME),
+        worldFeed: { enabled: Environment.WORLD_FEED, token: Environment.WORLD_FEED_TOKEN, maxClients: Environment.WORLD_FEED_MAX_CLIENTS }
     });
 }
 
