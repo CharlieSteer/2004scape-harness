@@ -211,9 +211,10 @@ export default class Player extends PathingEntity {
         sav.p2(PlayerLoading.SAV_MAGIC); // magic
         sav.p2(PlayerLoading.SAV_VERSION); // version
 
-        sav.p2(this.x);
-        sav.p2(this.z);
-        sav.p1(this.level);
+        const safe = this.delayed && this.safeX !== -1;
+        sav.p2(safe ? this.safeX : this.x);
+        sav.p2(safe ? this.safeZ : this.z);
+        sav.p1(safe ? this.safeLevel : this.level);
         for (let i = 0; i < 7; i++) {
             sav.p1(this.body[i]);
         }
@@ -389,6 +390,12 @@ export default class Player extends PathingEntity {
     allowDesign: boolean = false;
     afkEventReady: boolean = false;
     moveClickRequest: boolean = false;
+    // Last tile the player stood on outside a delayed script. Saves taken mid-delay
+    // (autosave, another player's checkpoint, shutdown) use this so a player is never
+    // persisted inside an agility obstacle or other transient position.
+    safeX: number = -1;
+    safeZ: number = -1;
+    safeLevel: number = -1;
 
     requestLogout: boolean = false;
     requestIdleLogout: boolean = false;

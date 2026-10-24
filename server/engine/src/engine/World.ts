@@ -810,6 +810,12 @@ class World {
                 if ((player.masks & PlayerInfoProt.EXACT_MOVE) == 0) {
                     player.validateDistanceWalked();
                 }
+
+                if (!player.delayed) {
+                    player.safeX = player.x;
+                    player.safeZ = player.z;
+                    player.safeLevel = player.level;
+                }
             } catch (err) {
                 console.error(err);
                 console.warn(`[LOGOUT DEBUG] Server exception during player tick for ${player.username} - forcing logout`);
